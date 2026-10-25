@@ -1,6 +1,17 @@
 # Put Scanner
 
-Scans a list of tickers on Robinhood for the put option, expiring on a given date, whose delta is closest to a target. It prints a table with weekly and annualized return, buy %, and dividend yield, and saves the results to a CSV file. The script is read-only and places no orders.
+A free tool for people who sell cash-secured puts. Give it a list of tickers, a target delta (for example 0.10) and an expiry date, and it finds the put on each ticker whose delta is closest to your target, using your own Robinhood account for live option data.
+
+For each ticker it shows the stock price, strike, mark, bid/ask, delta, implied volatility, open interest, volume, weekly and annualized return (mark ÷ strike), analyst buy %, and dividend yield, and saves the results to a CSV file. It is read-only and never places orders.
+
+There are two ways to run it, both on your own computer:
+
+- **Browser version** (`put_scanner_web.py`): a page in your browser with a login form, sortable results and a CSV download.
+- **Terminal version** (`put_scanner.py`): prints the table in the terminal.
+
+![Scan results in the browser version](docs/screenshots/results.png)
+
+<sub>Screenshots use made-up sample data.</sub>
 
 ## Setup
 
@@ -35,6 +46,11 @@ python3 put_scanner_web.py
 ```
 
 Your browser opens `http://127.0.0.1:8765`. Log in, paste tickers (or load a `.list` file), pick a delta and an expiry date, and click **Run scan**. If Robinhood asks for a texted or emailed code, a box for it appears on the page; if it asks you to approve in the app, approve it there. Results can be sorted by clicking a column, and **Download CSV** saves the same CSV the terminal version writes. If a saved session exists it is used automatically, and **Log out** deletes it.
+
+<p>
+  <img src="docs/screenshots/login.png" alt="Login and scan settings" width="49%">
+  <img src="docs/screenshots/results-dark.png" alt="Results in dark mode" width="49%">
+</p>
 
 Options: `--port 9000` to use another port, `--no-browser` to not open the browser. Press Ctrl+C in the terminal to stop.
 
