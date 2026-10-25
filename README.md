@@ -25,6 +25,19 @@ python3 put_scanner.py -f tickers.list -d 0.10          # defaults to next Frida
 
 You are asked for your Robinhood email and password at login. The session is saved to `~/.tokens/robinhood.pickle`, which is never committed.
 
+## Browser version (runs on your computer)
+
+The same scan with a page in your browser instead of the terminal. It runs only on your own computer (served from `127.0.0.1`), and your Robinhood login goes straight from it to Robinhood.
+
+```bash
+source venv/bin/activate
+python3 put_scanner_web.py
+```
+
+Your browser opens `http://127.0.0.1:8765`. Log in, paste tickers (or load a `.list` file), pick a delta and an expiry date, and click **Run scan**. If Robinhood asks for a texted or emailed code, a box for it appears on the page; if it asks you to approve in the app, approve it there. Results can be sorted by clicking a column, and **Download CSV** saves the same CSV the terminal version writes. If a saved session exists it is used automatically, and **Log out** deletes it.
+
+Options: `--port 9000` to use another port, `--no-browser` to not open the browser. Press Ctrl+C in the terminal to stop.
+
 ## Troubleshooting
 
 If login fails, delete the saved session and run again:
