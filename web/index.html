@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Put Scanner</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5f6b7a;
+    --border: #dde2e8; --accent: #1f7a4d; --accent-text: #ffffff;
+    --ok: #1f7a4d; --warn: #9a6400; --bad: #b42318; --row: #f1f4f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111418; --card: #1a1f25; --text: #e6e9ed; --muted: #97a3b1;
+      --border: #2c333c; --accent: #3fb47a; --accent-text: #0b1410;
+      --ok: #4cc58a; --warn: #e0a940; --bad: #f07167; --row: #20262d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 16px; margin: 0 0 12px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+                    background: var(--bg); color: var(--text); font: inherit; }
+  textarea { min-height: 90px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  button { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent); cursor: pointer;
+           background: var(--accent); color: var(--accent-text); font: inherit; font-weight: 600; }
+  button.secondary { background: transparent; color: var(--text); border-color: var(--border); font-weight: 500; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .msg { color: var(--muted); font-size: 14px; }
+  .msg.err { color: var(--bad); }
+  .hidden { display: none !important; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px;
+          background: var(--row); color: var(--ok); font-weight: 600; }
+  progress { width: 220px; height: 10px; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  th { cursor: pointer; user-select: none; color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--card); }
+  th:first-child, td:first-child { text-align: left; font-weight: 600; }
+  tbody tr:hover { background: var(--row); }
+  .s-ok { color: var(--ok); font-weight: 600; }
+  .s-near { color: var(--warn); font-weight: 600; }
+  .s-bad { color: var(--bad); }
+  .foot { color: var(--muted); font-size: 13px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Delta Put Scanner</h1>
+  <p class="sub">Runs on your computer only. Your Robinhood login goes straight from here to Robinhood.</p>
+
+  <section class="card" id="login-card">
+    <h2>Robinhood login</h2>
+    <div id="login-form">
+      <div class="grid">
+        <div><label for="email">Email</label><input id="email" type="email" autocomplete="username"></div>
+        <div><label for="password">Password</label><input id="password" type="password" autocomplete="current-password"></div>
+        <div><label for="mfa">Authenticator code (if you use one)</label><input id="mfa" inputmode="numeric" autocomplete="one-time-code"></div>
+      </div>
+      <div class="row"><button id="login-btn">Log in</button></div>
+    </div>
+    <div id="code-form" class="hidden">
+      <div class="grid">
+        <div><label for="code" id="code-label">Verification code</label><input id="code" inputmode="numeric" autocomplete="one-time-code"></div>
+      </div>
+      <div class="row"><button id="code-btn">Send code</button></div>
+    </div>
+    <div id="logged-in" class="row hidden">
+      <span class="pill">Logged in</span>
+      <button class="secondary" id="logout-btn">Log out</button>
+    </div>
+    <p class="msg" id="login-msg"></p>
+  </section>
+
+  <section class="card">
+    <h2>Scan</h2>
+    <div class="grid">
+      <div style="grid-column: 1 / -1">
+        <label for="tickers">Tickers (one per line, or separated by commas or spaces)</label>
+        <textarea id="tickers" placeholder="AAPL&#10;MSFT&#10;KO"></textarea>
+        <div class="row" style="margin-top:6px">
+          <label for="file" style="margin:0">Or load a .list file:</label>
+          <input id="file" type="file" accept=".list,.txt,text/plain" style="width:auto;border:0;padding:0;background:none">
+        </div>
+      </div>
+      <div><label for="delta">Target delta</label><input id="delta" type="number" step="0.01" min="0.01" max="0.99" value="0.10"></div>
+      <div><label for="expiry">Expiry date</label><input id="expiry" type="date"></div>
+    </div>
+    <div class="row">
+      <button id="scan-btn">Run scan</button>
+      <button class="secondary hidden" id="stop-btn">Stop</button>
+      <progress id="progress" class="hidden" value="0" max="1"></progress>
+      <span class="msg" id="scan-msg"></span>
+    </div>
+  </section>
+
+  <section class="card hidden" id="results-card">
+    <div class="row" style="margin-top:0;justify-content:space-between">
+      <h2 id="results-title" style="margin:0">Results</h2>
+      <button class="secondary" id="csv-btn">Download CSV</button>
+    </div>
+    <div class="table-wrap" style="margin-top:12px">
+      <table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table>
+    </div>
+    <p class="foot" id="legend"></p>
+  </section>
+</main>
+
+<script>
+const TOKEN = "__SCANNER_TOKEN__";
+const $ = id => document.getElementById(id);
+
+// Same columns and number formats as put_scanner.py's table and CSV.
+const COLS = [
+  ["Ticker", "ticker", v => v],
+  ["Stock$", "stock", v => v.toFixed(2)],
+  ["Strike", "strike", v => v.toFixed(2)],
+  ["Mark", "mark", v => v.toFixed(3)],
+  ["Bid", "bid", v => v.toFixed(2)],
+  ["Ask", "ask", v => v.toFixed(2)],
+  ["Delta", "delta", v => v.toFixed(4)],
+  ["IV%", "iv", v => v.toFixed(1)],
+  ["OpenInt", "oi", v => String(v)],
+  ["Volume", "volume", v => String(v)],
+  ["Status", "status", v => v],
+  ["Weekly%", "weekly", v => v.toFixed(2)],
+  ["Annual%", "annual", v => v.toFixed(2)],
+  ["Buy%", "buy", v => v.toFixed(1)],
+  ["DivYield%", "div", v => v.toFixed(2)],
+];
+// The CLI shows "-" for zero or missing values, except Weekly/Annual/Buy/Div where only missing is "-".
+const ZERO_IS_BLANK = new Set(["stock", "strike", "mark", "bid", "ask", "delta", "iv", "oi", "volume"]);
+
+let state = null, sortKey = null, sortDir = 1, autoTried = false, polling = null;
+
+function fmt(key, f, v) {
+  if (v === null || v === undefined || (ZERO_IS_BLANK.has(key) && v === 0)) return "-";
+  return f(v);
+}
+
+async function api(path, body) {
+  const opts = { headers: { "X-Scanner-Token": TOKEN } };
+  if (body !== undefined) {
+    opts.method = "POST";
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(path, opts);
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok && data.error) throw new Error(data.error);
+  return data;
+}
+
+function store(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+
+function renderLogin(s) {
+  const st = s.login.status;
+  $("login-form").classList.toggle("hidden", st !== "logged_out");
+  $("code-form").classList.toggle("hidden", st !== "need_code");
+  $("logged-in").classList.toggle("hidden", st !== "logged_in");
+  $("login-btn").disabled = false;
+  let msg = s.login.message || "";
+  if (st === "working" && !msg) msg = "Logging in...";
+  if (st === "need_code") $("code-label").textContent = msg || "Verification code";
+  $("login-msg").textContent = st === "need_code" ? "" : msg;
+  $("login-msg").classList.toggle("err", /fail|expired/i.test(msg));
+  $("scan-btn").disabled = st !== "logged_in" || s.scan.running;
+}
+
+function renderScan(s) {
+  const sc = s.scan;
+  $("stop-btn").classList.toggle("hidden", !sc.running);
+  $("progress").classList.toggle("hidden", !sc.running);
+  $("progress").max = sc.total || 1;
+  $("progress").value = sc.done;
+  if (sc.running) {
+    $("scan-msg").textContent = `[${sc.done + 1}/${sc.total}] ${sc.current || ""}`;
+    $("scan-msg").classList.remove("err");
+  } else if (sc.total && !$("scan-msg").classList.contains("err")) {
+    $("scan-msg").textContent = sc.done < sc.total ? `Stopped after ${sc.done} of ${sc.total}.` : `Done: ${sc.done} tickers.`;
+  }
+  if (!sc.rows.length) { $("results-card").classList.add("hidden"); return; }
+  $("results-card").classList.remove("hidden");
+  $("results-title").textContent = `Puts expiring ${sc.expiry} @ ~${sc.delta.toFixed(2)} delta`;
+  $("legend").textContent = `OK = delta within ±${s.delta_tol.toFixed(2)} of target · ~ = closest available · Click a column to sort.`;
+
+  $("head").innerHTML = "";
+  for (const [label, key] of COLS) {
+    const th = document.createElement("th");
+    th.textContent = label + (sortKey === key ? (sortDir > 0 ? " ▲" : " ▼") : "");
+    th.onclick = () => { sortDir = sortKey === key ? -sortDir : (key === "ticker" ? 1 : -1); sortKey = key; renderScan(state); };
+    $("head").appendChild(th);
+  }
+  const rows = [...sc.rows];
+  if (sortKey) rows.sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    if (x === null || x === undefined) return 1;
+    if (y === null || y === undefined) return -1;
+    return (typeof x === "string" ? x.localeCompare(y) : x - y) * sortDir;
+  });
+  $("body").innerHTML = "";
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    for (const [, key, f] of COLS) {
+      const td = document.createElement("td");
+      td.textContent = fmt(key, f, r[key]);
+      if (key === "status") td.className = r.status === "OK" ? "s-ok" : r.status === "~" ? "s-near" : "s-bad";
+      tr.appendChild(td);
+    }
+    $("body").appendChild(tr);
+  }
+}
+
+async function refresh() {
+  try { state = await api("/api/status"); }
+  catch (e) { $("login-msg").textContent = "Lost connection to the scanner. Is it still running in the terminal?"; return; }
+  if (!$("expiry").value) $("expiry").value = state.next_friday;
+  if (!autoTried) {
+    autoTried = true;
+    if (state.has_saved_session && state.login.status === "logged_out") {
+      api("/api/login", { saved: true }).catch(() => {});
+    }
+  }
+  renderLogin(state);
+  renderScan(state);
+  const busy = state.scan.running || ["working", "need_code", "approve_in_app"].includes(state.login.status);
+  clearTimeout(polling);
+  polling = setTimeout(refresh, busy ? 1000 : 4000);
+}
+
+$("login-btn").onclick = async () => {
+  $("login-btn").disabled = true;
+  try {
+    await api("/api/login", { email: $("email").value, password: $("password").value, mfa: $("mfa").value });
+    $("password").value = ""; $("mfa").value = "";
+  } catch (e) { $("login-msg").textContent = e.message; $("login-msg").classList.add("err"); }
+  refresh();
+};
+$("password").addEventListener("keydown", e => { if (e.key === "Enter") $("login-btn").click(); });
+
+$("code-btn").onclick = async () => { await api("/api/code", { code: $("code").value }); $("code").value = ""; refresh(); };
+$("code").addEventListener("keydown", e => { if (e.key === "Enter") $("code-btn").click(); });
+$("logout-btn").onclick = async () => { await api("/api/logout", {}); refresh(); };
+
+$("file").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const text = await f.text();
+  $("tickers").value = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith("#")).join("\n");
+  store("tickers", $("tickers").value);
+};
+$("tickers").addEventListener("input", () => store("tickers", $("tickers").value));
+$("delta").addEventListener("input", () => store("delta", $("delta").value));
+
+$("scan-btn").onclick = async () => {
+  const tickers = $("tickers").value.split(/[\s,]+/).filter(Boolean);
+  $("scan-msg").classList.remove("err");
+  $("scan-msg").textContent = "Starting...";
+  sortKey = null;
+  try { await api("/api/scan", { tickers, delta: $("delta").value, expiry: $("expiry").value }); }
+  catch (e) { $("scan-msg").textContent = e.message; $("scan-msg").classList.add("err"); }
+  refresh();
+};
+$("stop-btn").onclick = async () => { await api("/api/stop", {}); refresh(); };
+
+$("csv-btn").onclick = () => {
+  const sc = state.scan;
+  const lines = [COLS.map(c => c[0]).join(",")];
+  for (const r of sc.rows) lines.push(COLS.map(([, key, f]) => fmt(key, f, r[key])).join(","));
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/csv" }));
+  a.download = `put_scan_${sc.expiry}_d${sc.delta.toFixed(2)}_${stamp}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+$("tickers").value = load("tickers") || "";
+$("delta").value = load("delta") || "0.10";
+refresh();
+</script>
+</body>
+</html>
