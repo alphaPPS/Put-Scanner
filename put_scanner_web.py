@@ -67,10 +67,23 @@ scan_state = {
 }
 
 
+LOGIN_NOTES = {
+    "logged_out":     "Waiting for you to log in on the page.",
+    "need_code":      "Enter the verification code on the page.",
+    "approve_in_app": "Approve this login in your Robinhood app.",
+    "logged_in":      "Logged in. Run a scan from the page.",
+}
+
+
 def set_login(status, message=""):
     with lock:
+        changed = (login_state["status"], login_state["message"]) != (status, message)
         login_state["status"] = status
         login_state["message"] = message
+    # Mirror login progress in the terminal so it never looks stuck.
+    if changed and status in LOGIN_NOTES:
+        note = f"{message}  " if message and status != "need_code" else ""
+        print(f"  Login: {note}{LOGIN_NOTES[status]}", flush=True)
 
 
 # ── Robinhood login, driven from the page ─────────────────────────────────────
@@ -198,9 +211,12 @@ def run_scan(tickers, expiry, target_delta):
         with lock:
             scan_state["rows"].append(row)
             scan_state["done"] += 1
+            done, total = scan_state["done"], scan_state["total"]
+        print(f"  [{done:2}/{total}] {ticker:<6} {row.get('status') or ''}", flush=True)
     with lock:
         scan_state["running"] = False
         scan_state["current"] = None
+    print("  Scan finished. Results are on the page.", flush=True)
 
 
 def start_scan(tickers, delta, expiry):
