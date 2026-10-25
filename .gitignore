@@ -1,0 +1,13 @@
+# Scanner output
+*.csv
+
+# Robinhood session tokens
+*.pickle
+.tokens/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
