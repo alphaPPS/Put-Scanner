@@ -45,3 +45,11 @@ If login fails, delete the saved session and run again:
 ```bash
 rm ~/.tokens/robinhood.pickle
 ```
+
+## Disclaimer
+
+This tool is for information only and is not financial advice. It uses the unofficial `robin_stocks` library, which Robinhood does not support and which can stop working when Robinhood changes things. Data may be delayed or wrong, so check anything important in Robinhood before you trade. It comes with no warranty, and you use it at your own risk.
+
+## License
+
+[MIT](LICENSE). Free for anyone to use, copy, and change.
